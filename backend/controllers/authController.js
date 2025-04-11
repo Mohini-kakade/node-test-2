@@ -11,7 +11,6 @@ exports.register = async (req, res) => {
     user = new User({ name, email, password, phone, address });
     await user.save();
 
-    // 🔒 Only generate token after login, not during register (best practice)
     res.status(201).json({ msg: 'User registered successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -3,15 +3,15 @@ const { getAIResponse } = require('../models/huggingface');
 const cleanAIResponse = (userMessage, aiText) => {
   let reply = aiText || '';
 
-  // Remove original message if echoed at the start
+  
   if (reply.toLowerCase().startsWith(userMessage.toLowerCase())) {
     reply = reply.slice(userMessage.length).trim();
   }
 
-  // Remove prefixes like ?, Answer:, Response:, AI:
+ 
   reply = reply.replace(/^(?:\s*\?+|\s*(Answer|Response|AI)[:\-])\s*/i, '');
 
-  // Remove leading empty lines or spaces
+ 
   reply = reply.trimStart();
 
   return reply;
