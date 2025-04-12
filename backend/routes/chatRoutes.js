@@ -1,7 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { chatWithAI } = require('../controllers/chatController');
+const { chatWithAI } = require("../controllers/chatController");
+const auth = require("../middlewares/authMiddleware");
 
-router.post('/', chatWithAI);
+router.post("/", auth, chatWithAI);
 
 module.exports = router;
