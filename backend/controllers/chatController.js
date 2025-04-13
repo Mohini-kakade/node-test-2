@@ -4,49 +4,89 @@ const Post = require("../models/postModel");
 
 const chatWithAI = async (req, res) => {
   const userMessage = req.body.message;
+  const userId = req.user.id;
 
   try {
-    const users = await User.find({}, "userId name email role");
-    const posts = await Post.find({})
-      .populate("createdBy", "userId name")
-      .select("post_id title content isDeleted isUpdated createdBy");
+    const loggedInUser = await User.findById(userId).select("name email role");
+    if (!loggedInUser) {
+      return res.status(400).json({ reply: "User not found." });
+    }
 
-    const userDataText = users
+    let allUsersText = "";
+
+    const posts = await Post.find().select(
+      "post_id title content isDeleted isUpdated createdAt updatedAt userId"
+    );
+
+    const visiblePosts = posts.filter((post) => !post.isDeleted);
+
+    if (loggedInUser.role === "admin") {
+      const allUsers = await User.find().select("name email role _id");
+      allUsersText = allUsers
+        .map(
+          (user) =>
+            `UserID: ${user._id}\nName: ${user.name}\nEmail: ${user.email}\nRole: ${user.role}\n`
+        )
+        .join("\n");
+    }
+
+    const postsCreated = visiblePosts.length;
+    const postsDeleted = posts.filter((post) => post.isDeleted).length;
+    const postsUpdated = visiblePosts.filter((post) => post.isUpdated).length;
+
+    const updatedPosts = visiblePosts
+      .filter((post) => post.isUpdated)
       .map(
-        (u) =>
-          `UserID: ${u.userId}, Name: ${u.name}, Email: ${u.email}, Role: ${u.role}`
+        (p) =>
+          `PostID: ${p.post_id}\nTitle: ${p.title}\nContent: ${p.content}\nUpdated At: ${p.updatedAt}\n`
       )
       .join("\n");
 
-    const postDataText = posts
-      .map((p) => {
-        const statusTags = [];
-        if (p.isDeleted) statusTags.push("Deleted");
-        if (p.isUpdated) statusTags.push("Updated");
-        const tagString = statusTags.length
-          ? ` [${statusTags.join(", ")}]`
-          : "";
-        return `PostID: ${p.post_id}, Title: ${p.title}, Content: ${
-          p.content
-        }, Created By: ${p.createdBy?.name || "Unknown"}${tagString}`;
-      })
+    const postDataText = visiblePosts
+      .map(
+        (p) =>
+          `PostID: ${p.post_id}\nTitle: ${p.title}\nContent: ${p.content}\nCreated At: ${p.createdAt}\nAuthor: ${p.userId}\n`
+      )
       .join("\n");
+
+    const userDataText = `UserID: ${loggedInUser._id}\nName: ${loggedInUser.name}\nEmail: ${loggedInUser.email}\nRole: ${loggedInUser.role}`;
 
     const prompt = `
 You are an AI assistant for a blogging platform.
-Below is the list of registered users:
+
+Logged-in user details:
 ${userDataText}
 
-Here is the list of posts with status tags like [Deleted], [Updated] if applicable:
-${postDataText}
+${
+  loggedInUser.role === "admin"
+    ? `As an admin, you have access to all users and all posts.
 
-Now answer the following question from the user:
+All registered users:
+${allUsersText}
+
+All posts:
+${postDataText}
+`
+    : `As a regular user, you have access to all posts but not all users.
+
+All posts:
+${postDataText}`
+}
+  
+Number of posts created: ${postsCreated}
+Number of posts deleted: ${postsDeleted}
+Number of posts updated: ${postsUpdated}
+
+Updated posts:
+${updatedPosts || "No posts have been updated."}
+
+Now, answer the following question from the user:
 "${userMessage}"
-Only provide relevant post or user details based on the question. Do not mention internal field names like isDeleted or isUpdated.
+
+Provide accurate and clear answers based on the information available to this user.
 `;
 
     const aiReply = await generateGeminiResponse(prompt);
-
     res.json({ reply: aiReply });
   } catch (error) {
     console.error("Error in chatWithAI controller:", error);

@@ -61,6 +61,8 @@ exports.getPostById = async (req, res) => {
   }
 };
 
+
+
 exports.updatePost = async (req, res) => {
   try {
     const post = await Post.findOne({
@@ -69,18 +71,18 @@ exports.updatePost = async (req, res) => {
     });
 
     if (!post) {
-      return res
-        .status(404)
-        .json({ message: "Post not found or has been deleted." });
+      return res.status(404).json({ message: "Post not found or has been deleted." });
+    }
+
+    if (post.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: "You are not authorized to update this post." });
     }
 
     if (req.body.title !== undefined) post.title = req.body.title;
-    if (req.body.description !== undefined)
-      post.description = req.body.description;
+    if (req.body.description !== undefined) post.description = req.body.description;
     if (req.body.content !== undefined) post.content = req.body.content;
 
     post.isUpdated = true;
-
     await post.save();
 
     const io = req.app.get("io");
@@ -91,11 +93,10 @@ exports.updatePost = async (req, res) => {
     res.status(200).json(post);
   } catch (err) {
     console.error("Error updating post:", err);
-    res
-      .status(500)
-      .json({ message: "Error updating post", error: err.message || err });
+    res.status(500).json({ message: "Error updating post", error: err.message || err });
   }
 };
+
 
 exports.deletePost = async (req, res) => {
   try {
@@ -109,6 +110,10 @@ exports.deletePost = async (req, res) => {
       return res.status(400).json({ message: "Post is already deleted." });
     }
 
+    if (post.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: "You are not authorized to delete this post." });
+    }
+
     post.isDeleted = true;
     await post.save();
 
@@ -120,8 +125,6 @@ exports.deletePost = async (req, res) => {
     res.status(200).json({ message: "Post marked as deleted successfully" });
   } catch (err) {
     console.error("Error deleting post:", err);
-    res
-      .status(500)
-      .json({ message: "Error deleting post", error: err.message || err });
+    res.status(500).json({ message: "Error deleting post", error: err.message || err });
   }
 };
