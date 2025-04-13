@@ -12,6 +12,8 @@ const postSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    isDeleted: { type: Boolean, default: false },
+    isUpdated: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

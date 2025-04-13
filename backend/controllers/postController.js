@@ -7,6 +7,8 @@ exports.createPost = async (req, res) => {
       description: req.body.description,
       content: req.body.content,
       createdBy: req.user.id,
+      isDeleted: false,
+      isUpdated: false,
     });
 
     await newPost.save();
@@ -27,7 +29,7 @@ exports.createPost = async (req, res) => {
 
 exports.getPosts = async (req, res) => {
   try {
-    const posts = await Post.find();
+    const posts = await Post.find({ isDeleted: false });
     res.status(200).json(posts);
   } catch (err) {
     console.error("Error fetching posts:", err);
@@ -39,10 +41,15 @@ exports.getPosts = async (req, res) => {
 
 exports.getPostById = async (req, res) => {
   try {
-    const post = await Post.findOne({ post_id: req.params.post_id });
+    const post = await Post.findOne({
+      post_id: req.params.post_id,
+      isDeleted: false,
+    });
 
     if (!post) {
-      return res.status(404).json({ message: "Post not found" });
+      return res
+        .status(404)
+        .json({ message: "Post not found or has been deleted." });
     }
 
     res.status(200).json(post);
@@ -56,16 +63,23 @@ exports.getPostById = async (req, res) => {
 
 exports.updatePost = async (req, res) => {
   try {
-    const post = await Post.findOne({ post_id: req.params.post_id });
+    const post = await Post.findOne({
+      post_id: req.params.post_id,
+      isDeleted: false,
+    });
 
     if (!post) {
-      return res.status(404).json({ message: "Post not found" });
+      return res
+        .status(404)
+        .json({ message: "Post not found or has been deleted." });
     }
 
     if (req.body.title !== undefined) post.title = req.body.title;
     if (req.body.description !== undefined)
       post.description = req.body.description;
     if (req.body.content !== undefined) post.content = req.body.content;
+
+    post.isUpdated = true;
 
     await post.save();
 
@@ -85,18 +99,25 @@ exports.updatePost = async (req, res) => {
 
 exports.deletePost = async (req, res) => {
   try {
-    const post = await Post.findOneAndDelete({ post_id: req.params.post_id });
+    const post = await Post.findOne({ post_id: req.params.post_id });
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
+
+    if (post.isDeleted) {
+      return res.status(400).json({ message: "Post is already deleted." });
+    }
+
+    post.isDeleted = true;
+    await post.save();
 
     const io = req.app.get("io");
     if (io) {
       io.emit("post_deleted", { post_id: req.params.post_id });
     }
 
-    res.status(200).json({ message: "Post deleted successfully" });
+    res.status(200).json({ message: "Post marked as deleted successfully" });
   } catch (err) {
     console.error("Error deleting post:", err);
     res
