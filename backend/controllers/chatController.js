@@ -1,37 +1,51 @@
-const { getAIResponse } = require("../models/huggingface");
+const { generateGeminiResponse } = require("../config/gemini");
 
-const cleanAIResponse = (userMessage, aiText) => {
-  let reply = aiText || "";
-
-  if (reply.toLowerCase().startsWith(userMessage.toLowerCase())) {
-    reply = reply.slice(userMessage.length).trim();
-  }
-
-  reply = reply.replace(/^(?:\s*\?+|\s*(Answer|Response|AI)[:\-])\s*/i, "");
-
-  reply = reply.trimStart();
-
-  return reply;
-};
+const User = require("../models/userModel");
+const Post = require("../models/postModel");
 
 const chatWithAI = async (req, res) => {
   const userMessage = req.body.message;
 
   try {
-    const generatedText = await getAIResponse(userMessage);
+    const users = await User.find({}, "userId name email role");
+    const posts = await Post.find({})
+      .populate("createdBy", "userId name")
+      .select("post_id title content");
 
-    if (generatedText) {
-      const cleanedReply = cleanAIResponse(userMessage, generatedText);
-      res.json({ reply: cleanedReply });
-    } else {
-      res.json({ reply: "Sorry, I didn't get a response from the AI." });
-    }
+    const userDataText = users
+      .map(
+        (u) =>
+          `UserID: ${u.userId}, Name: ${u.name}, Email: ${u.email}, Role: ${u.role}`
+      )
+      .join("\n");
+
+    const postDataText = posts
+      .map(
+        (p) =>
+          `PostID: ${p.post_id}, Title: ${p.title}, Content: ${
+            p.content
+          }, Created By: ${p.createdBy?.name || "Unknown"}`
+      )
+      .join("\n");
+
+    const prompt = `
+You are an AI assistant for a blogging platform.
+Here is the list of registered users:
+${userDataText}
+
+Here is the list of posts:
+${postDataText}
+
+Now answer the following question from the user:
+"${userMessage}"
+`;
+
+    const aiReply = await generateGeminiResponse(prompt);
+
+    res.json({ reply: aiReply });
   } catch (error) {
-    console.error(
-      "Error in chatWithAI controller:",
-      error?.response?.data || error.message
-    );
-    res.status(500).json({ reply: "AI error. Please try again later." });
+    console.error("Error in chatWithAI controller:", error);
+    res.status(500).json({ reply: "Internal server error." });
   }
 };
 

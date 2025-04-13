@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const Counter = require("./counterModel"); // Import the Counter model
+const Counter = require("./counterModel");
 
 const userSchema = new mongoose.Schema({
   userId: { type: String, unique: true },
