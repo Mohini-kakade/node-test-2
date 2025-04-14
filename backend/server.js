@@ -47,6 +47,6 @@ app.use("/chat", chatRoutes);
 app.use("/posts", postRoutes);
 
 server.listen(5000, () => {
-  console.log("🚀 Server running on http://localhost:5000");
-  console.log("🛰️  Socket.IO endpoint: ws://localhost:5000/socket.io/");
+  console.log("Server running on http://localhost:5000");
+  console.log("Socket.IO endpoint: ws://localhost:5000/socket.io/");
 });
