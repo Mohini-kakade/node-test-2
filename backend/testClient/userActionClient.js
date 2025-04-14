@@ -174,7 +174,7 @@ const viewAllPosts = async (token) => {
     console.error("Error fetching posts:", error.response.data);
     showPostOptions(token);
   }
-};
+};  
 
 const viewSpecificPost = async (token) => {
   rl.question("Enter the post ID to view: ", async (postId) => {
