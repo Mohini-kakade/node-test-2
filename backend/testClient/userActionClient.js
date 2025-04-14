@@ -70,7 +70,14 @@ const registerNewUser = async (name, email, password, phone, address, role) => {
     console.log("Registration successful! You can now login.");
     rl.close();
   } catch (error) {
-    console.error("Error during registration:", error.response.data.msg);
+    if (error.response && error.response.data.errors) {
+      console.error("Validation errors:");
+      error.response.data.errors.forEach((error) => {
+        console.error(`${error.msg}`);
+      });
+    } else {
+      console.error("Unexpected error during registration:", error.message);
+    }
     rl.close();
   }
 };
@@ -136,7 +143,17 @@ const createPost = async (token) => {
           console.log("Post created successfully:", response.data);
           showPostOptions(token);
         } catch (error) {
-          console.error("Error creating post:", error.response.data);
+          if (error.response && error.response.data.errors) {
+            console.error("Validation errors:");
+            error.response.data.errors.forEach((error) => {
+              console.error(`${error.msg}`);
+            });
+          } else {
+            console.error(
+              "Unexpected error during registration:",
+              error.message
+            );
+          }
           showPostOptions(token);
         }
       });
